@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/image/orion-logo.png" alt="ORION Logo" width="200">
+  <img src="docs/image/orion-logo.png" alt="ORION Logo" width="400">
 </p>
 
 # ORION  
