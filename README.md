@@ -1,4 +1,7 @@
-![ORION Logo](docs/image/orion-logo.png)
+<p align="center">
+  <img src="docs/image/orion-logo.png" alt="ORION Logo" width="200">
+</p>
+
 # ORION  
 ### Offensive Recon Intelligence Engine
 
