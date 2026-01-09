@@ -1,3 +1,4 @@
+![ORION Logo](docs/image/orion-logo.png)
 # ORION  
 ### Offensive Recon Intelligence Engine
 
