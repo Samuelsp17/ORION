@@ -1,6 +1,6 @@
 from typing import Dict, Any, List
 
-from brain.ein import ExpandedIntelligenceMap
+from orion.brain.eim import ExpandedIntelligenceMap
 from rules.registry import RuleRegistry
 from rules.base import RuleResult
 
