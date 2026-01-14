@@ -6,6 +6,8 @@ import subprocess
 import requests
 from modules.infra_profile import analyze_infrastructure
 from modules.exposure_context import analyze_exposure_context
+from modules.human_correlation import analyze_human_correlation
+from reports.templates import generate_narrative_report
 
 # =========================================================
 # MODULE: COLLECTION (RECON)
@@ -211,17 +213,38 @@ def main():
 
     exposure_context = analyze_exposure_context(infra_profile, correlations)
 
+    human_context = analyze_human_correlation(
+    infra_profile,
+    exposure_context
+    )
+
+    narrative_report = generate_narrative_report(
+    domain=domain,
+    infra_profile=infra_profile,
+    exposure_context=exposure_context,
+    human_context=human_context
+    )
+
     analysis = risk_analysis_module(normalized_data, correlations)
 
     # OUTPUT
     output_module(normalized_data, analysis)
-
-    # DEBUG TEMPORÁRIO — DENTRO DO MAIN
+    
+    #DEBUG TEMPORÁRIO DENTRO DO MAIN
     print("\n[DEBUG] Exposure Context:")
     print(f"  Level: {exposure_context['exposure_level']}")
     print(f"  Posture: {exposure_context['posture']}")
     print(f"  Interpretation: {exposure_context['interpretation']}")
 
+    print("\n[DEBUG] Human Correlation Analysis:")
+    for signal in human_context["human_signals"]:
+        print(f"- Signal: {signal}")
+
+    print(f"Risk Bias: {human_context['risk_bias']}")
+
+    print("\n========== ORION NARRATIVE REPORT ==========\n")
+    print(narrative_report)
+    print("\n===========================================")
 
 if __name__ == "__main__":
     main()
