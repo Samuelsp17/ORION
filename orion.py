@@ -4,28 +4,29 @@ import argparse
 import socket
 import subprocess 
 import requests
+from modules.infra_profile import analyze_infrastructure
+from modules.exposure_context import analyze_exposure_context
 
 # =========================================================
 # MODULE: COLLECTION (RECON)
 # =========================================================
 def recon_module(domain):
     print("[RECON] Starting information collection...")
-    # Placeholder: no real collection yet
+
     recon_data = {
         "domain": domain,
         "dns": {},
         "ip": None,
-        "http_hearders": {},
+        "http_headers": {},
     }
 
     # DNS / IP resolution
     try:
-        ip = socket.gethostbyname(domain)
-        recon_data["ip"] = ip
-    except Exception as e:
+        recon_data["ip"] = socket.gethostbyname(domain)
+    except Exception:
         recon_data["ip"] = None
 
-    # Basic DNS records via system (nslookup)
+    # Basic DNS records (raw)
     try:
         result = subprocess.check_output(
             ["nslookup", domain],
@@ -46,8 +47,6 @@ def recon_module(domain):
     print("[RECON] Collection finished.")
     return recon_data
 
-
-
 # =========================================================
 # MODULE: PROCESSING
 # =========================================================
@@ -62,7 +61,8 @@ def processing_module(recon_data):
         "dns": recon_data["dns"],
         "web": {
             "headers": recon_data["http_headers"],
-            "server": recon_data["http_headers"].get("Server", "Unknown")
+            "server": recon_data["http_headers"].get("Server", "Unknown"),
+            "powered_by": recon_data["http_headers"].get("X-Powered-By")
         }
     }
 
@@ -71,34 +71,89 @@ def processing_module(recon_data):
 
 
 # =========================================================
-# MODULE: ANALYSIS (HEURISTIC)
+# MODULE: NORMALIZATION 
 # =========================================================
-def ai_analysis_module(processed_data):
-    print("[AI] Starting intelligent analysis...")
+def normalization_module(processed_data):
+    print("[NORMALIZATION] Normalizing data...")
 
-    observations = []
-    headers = processed_data["web"]["headers"]
+    normalized = processed_data.copy()
 
-    if processed_data["web"]["server"] != "Unknown":
-        observations.append(
-            f"Web server identified: {processed_data['web']['server']}"
-        )
+    server = normalized["web"]["server"]
+    if server:
+        normalized["web"]["server"] = server.split("/")[0].strip()
 
-    if "X-Powered-By" in headers:
-        observations.append(
-            f"Technology disclosure via X-Powered-By: {headers['X-Powered-By']}"
-        )
+    powered = normalized["web"]["powered_by"]
+    if powered:
+        normalized["web"]["powered_by"] = powered.split(" ")[0].strip()
 
-    if not observations:
-        observations.append("No obvious surface indicators detected yet.")
+    print("[NORMALIZATION] Normalization completed.")
+    return normalized
+
+
+# =========================================================
+# MODULE: CORRELATION 
+# =========================================================
+def correlation_module(normalized_data):
+    print("[CORRELATION] Correlating information...")
+
+    correlations = []
+
+    web = normalized_data["web"]
+
+    if web["server"] != "Unknown" and web["powered_by"]:
+        correlations.append({
+            "type": "tech_stack",
+            "description": "Web server and application technology both exposed",
+            "confidence": 0.7
+        })
+
+    if web["server"] != "Unknown":
+        correlations.append({
+            "type": "service_exposure",
+            "description": f"Identified web server: {web['server']}",
+            "confidence": 0.5
+        })
+
+    if not correlations:
+        correlations.append({
+            "type": "low_visibility",
+            "description": "Low technology disclosure detected",
+            "confidence": 0.3
+        })
+
+    print("[CORRELATION] Correlation completed.")
+    return correlations
+
+
+# =========================================================
+# MODULE: RISK ANALYSIS 
+# =========================================================
+def risk_analysis_module(normalized_data, correlations):
+    print("[AI] Starting contextual risk analysis...")
+
+    findings = []
+
+    for item in correlations:
+        if item["confidence"] >= 0.7:
+            severity = "Medium"
+        elif item["confidence"] >= 0.4:
+            severity = "Low"
+        else:
+            severity = "Informational"
+
+        findings.append({
+            "severity": severity,
+            "description": item["description"],
+            "confidence": item["confidence"]
+        })
 
     analysis = {
-        "summary": "Passive surface observation completed.",
-        "observations": observations,
+        "summary": "Contextual passive analysis completed.",
+        "findings": findings,
         "next_steps": [
-            "Expand DNS record parsing",
-            "Add subdomain enumeration (passive)",
-            "Introduce port discovery (light scan)"
+            "Improve DNS parsing and structuring",
+            "Introduce passive subdomain intelligence",
+            "Add infrastructure pattern analysis"
         ]
     }
 
@@ -106,18 +161,21 @@ def ai_analysis_module(processed_data):
     return analysis
 
 
-
 # =========================================================
-# MODULE: OUTPUT (REPORT)
+# MODULE: OUTPUT (REPORT) 
 # =========================================================
 def output_module(processed_data, analysis):
     print("\n========== ORION REPORT ==========")
     print(f"Target: {processed_data['domain']}")
     print(f"IP Address: {processed_data['network']['ip']}")
 
-    print("\nObservations:")
-    for obs in analysis["observations"]:
-        print(f"- {obs}")
+    print("\nFindings:")
+    for finding in analysis["findings"]:
+        print(
+            f"- [{finding['severity']}] "
+            f"{finding['description']} "
+            f"(confidence: {finding['confidence']})"
+        )
 
     print("\nSuggested next steps:")
     for step in analysis["next_steps"]:
@@ -131,7 +189,7 @@ def output_module(processed_data, analysis):
 # =========================================================
 def main():
     parser = argparse.ArgumentParser(
-        description="ORION Framework - Passive Attack Surface Mapping"
+        description="ORION Framework - Passive Intelligence & Analysis"
     )
     parser.add_argument(
         "domain",
@@ -145,8 +203,24 @@ def main():
 
     recon_data = recon_module(domain)
     processed_data = processing_module(recon_data)
-    analysis = ai_analysis_module(processed_data)
-    output_module(processed_data, analysis)
+
+    normalized_data = normalization_module(processed_data)
+    correlations = correlation_module(normalized_data)
+
+    infra_profile = analyze_infrastructure(normalized_data)
+
+    exposure_context = analyze_exposure_context(infra_profile, correlations)
+
+    analysis = risk_analysis_module(normalized_data, correlations)
+
+    # OUTPUT
+    output_module(normalized_data, analysis)
+
+    # DEBUG TEMPORÁRIO — DENTRO DO MAIN
+    print("\n[DEBUG] Exposure Context:")
+    print(f"  Level: {exposure_context['exposure_level']}")
+    print(f"  Posture: {exposure_context['posture']}")
+    print(f"  Interpretation: {exposure_context['interpretation']}")
 
 
 if __name__ == "__main__":
