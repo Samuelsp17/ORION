@@ -2,6 +2,9 @@
 import sys
 import argparse
 from core.models import Asset
+from core.scorer import Scorer # inmportando o novo motor
+from core.parsers import HttpxParser
+
 
 def banner():
     print("""
@@ -10,37 +13,39 @@ def banner():
     """)
 def main():
     banner()
-    
-    # Configuração do Argument Parser
     parser = argparse.ArgumentParser(description="ORION - Offensive Recon Intelligence Engine")
-    parser.add_argument("target", help="Target domain to analyze (e.g., target.com)")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
+    parser.add_argument("target", help="Target domain (for reference)")
+    parser.add_argument("-f", "--file", help="Path to httpx JSON output file")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Show scoring reasons")
     
     args = parser.parse_args()
-    target_domain = args.target
+    scorer = Scorer()
+    
+    # Decidindo a fonte dos dados
+    if args.file:
+        print(f"[*] Loading data from: {args.file}")
+        parser_engine = HttpxParser()
+        raw_assets = parser_engine.parse(args.file)
+    else:
+        # Mantém o mock apenas se nenhum arquivo for passado, para fins de teste
+        print("[!] No input file provided. Using sample mock data...")
+        raw_assets = [
+            Asset(domain=f"dev-api.{args.target}", technologies=["Node.js"], status_code=200),
+            Asset(domain=f"jenkins.{args.target}", technologies=["Jenkins"], status_code=403)
+        ]
 
-    print(f"[*] Starting intelligent analysis for: \033[1m{target_domain}\033[0m")
-    print("-" * 65)
-    print(f"{'SCORE':<5} | {'DOMAIN':<30} | {'TECHNOLOGIES'}")
-    print("-" * 65)
+    # Processamento e Display (o resto permanece igual)
+    processed_assets = [scorer.calculate_score(a) for a in raw_assets]
+    sorted_assets = sorted(processed_assets, key=lambda x: x.attack_interest_score, reverse=True)
 
-    # SIMULAÇÃO: Dados mockados para testar a interface (Etapa 1.1)
-    # Na Etapa 1.3, esses dados virão de ferramentas de recon reais
-    mock_assets = [
-        Asset(domain=f"dev-api.{target_domain}", technologies=["Node.js", "Express"], attack_interest_score=85),
-        Asset(domain=f"staging.{target_domain}", technologies=["PHP 7.4", "Laravel"], attack_interest_score=92),
-        Asset(domain=f"www.{target_domain}", technologies=["Cloudflare", "React"], attack_interest_score=15),
-        Asset(domain=f"internal-docs.{target_domain}", technologies=["WordPress"], attack_interest_score=65),
-    ]
-
-    # Ordenar por Score (maior primeiro)
-    sorted_assets = sorted(mock_assets, key=lambda x: x.attack_interest_score, reverse=True)
-
+    print(f"[*] Analyzing {len(processed_assets)} assets...")
+    print("-" * 75)
     for asset in sorted_assets:
         print(asset.summary())
+        if args.verbose:
+            for reason in asset.score_reasons:
+                print(f"   └── \033[2m{reason}\033[0m")
 
-    print("-" * 65)
-    print(f"[*] Analysis complete. {len(mock_assets)} assets processed.")
 
 if __name__ == "__main__":
     try:
