@@ -1,0 +1,6 @@
+# IA e Integrações
+groq
+python-dotenv
+
+# Utilitários
+requests
